@@ -23,15 +23,12 @@ class MainScreen(BoxLayout):
         # Button Creation (rest remains the same)
         self.query_button = RoundButton(text='查询', font_size=500, color=(1, 1, 1, 1), bg_color=(0.529, 0.808, 0.922, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
         self.query_button.bind(on_press=self.show_query_screen)
-        self.add_widget(self.query_button)
 
         self.recite_button = RoundButton(text='记忆', font_size=500, color=(1, 1, 1, 1), bg_color=(0.275, 0.510, 0.706, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
         self.recite_button.bind(on_press=self.show_recite_screen)
-        self.add_widget(self.recite_button)
 
         self.lexicon_button = RoundButton(text='词库', font_size=500, color=(1, 1, 1, 1), bg_color=(0.118, 0.216, 0.600, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
         self.lexicon_button.bind(on_press=self.show_lexicon_screen)
-        self.add_widget(self.lexicon_button)
 
         self._add_main_buttons()  # 调用添加按钮的方法
 
@@ -69,6 +66,7 @@ class MainScreen(BoxLayout):
 
     def _switch_to_recite(self):
         self.clear_widgets()
+        # ReciteScreen.__init__ now handles starting with direction selection
         self.add_widget(ReciteScreen(
             return_to_main=self.show_main_screen,
             lexicon_instance=self.lexicon,
