@@ -1,6 +1,6 @@
 # WordPocket-Kivy
  A simple and effective vocabulary learning app built with Kivy.
-一个使用 Python 和 Kivy 构建的简单、跨平台的记单词应用。
+ 一个使用 Python 和 Kivy 构建的简单、跨平台的记单词应用。
 
 ---
 
