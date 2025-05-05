@@ -1,92 +1,106 @@
-# core/recite.py
-import random
-# 不再需要从这里导入 Lexicon 或 Data
-# from core.lexicon import Lexicon
-# from core.data import Data
+# screens/main_screen.py
+from kivy.uix.boxlayout import BoxLayout
+from kivy.animation import Animation
 
-class Recite:
-    # 修改 __init__ 以接收共享实例
-    def __init__(self, lexicon_instance, data_instance):
-        """
-        Initializes the Recite handler with shared Lexicon and Data instances.
+# Use relative imports for sibling modules (screens)
+from .query_screen import QueryScreen
+from .recite_screen import ReciteScreen
+from .lexicon_screen import LexiconScreen
 
-        Args:
-            lexicon_instance: The shared instance of the Lexicon class.
-            data_instance: The shared instance of the Data class.
-        """
-        # --- 存储共享实例 ---
+# Import RoundButton from its new location
+from ui_elements.buttons import RoundButton
+
+class MainScreen(BoxLayout):
+    def __init__(self, lexicon_instance, data_instance, app_instance=None, **kwargs): # Pass app instance if needed later
+        super(MainScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.app = app_instance # 可选
+
+        # 2. 存储共享实例
         self.lexicon = lexicon_instance
         self.data = data_instance
-        # --- 不再需要 self.lexicon = Lexicon(...) ---
-        # --- 不再需要 self.data = Data() ---
-        # --- 也不再需要 self.default_lexicon 或 lexicon_dir ---
 
-    # get_words 和 recite_words 可能不再需要，因为主要逻辑在 get_filtered_entries
-    # def get_words(self, lexicon_name=None, n=10): ...
-    # def recite_words(self, lexicon_name=None, n=10): ...
+        # Button Creation (rest remains the same)
+        self.query_button = RoundButton(text='查询', font_size=500, color=(1, 1, 1, 1), bg_color=(0.529, 0.808, 0.922, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.query_button.bind(on_press=self.show_query_screen)
 
-    def get_filtered_entries(self, lexicon_name, scheme, count):
-        """
-        Gets entries from a specified lexicon, filters them based on a scheme,
-        and returns a random sample. Uses shared Lexicon and Data instances.
-        """
-        if not self.lexicon or not self.data:
-             print("错误: Recite 无法访问共享的 Lexicon 或 Data 实例。")
-             return [], False # 返回空列表和 False
+        self.recite_button = RoundButton(text='记忆', font_size=500, color=(1, 1, 1, 1), bg_color=(0.275, 0.510, 0.706, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.recite_button.bind(on_press=self.show_recite_screen)
 
-        # --- 使用共享的 lexicon 实例获取条目 ---
-        # get_lexicon_entries 已经处理了索引到字典的映射
-        entries = self.lexicon.get_lexicon_entries(lexicon_name)
-        if not entries:
-             print(f"信息: 词库 '{lexicon_name}' 为空或加载失败。")
-             return [], False # 返回空
+        self.lexicon_button = RoundButton(text='词库', font_size=500, color=(1, 1, 1, 1), bg_color=(0.118, 0.216, 0.600, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.lexicon_button.bind(on_press=self.show_lexicon_screen)
 
-        # --- 使用共享的 data 实例进行筛选 ---
-        filtered_entries = self.data.filter_entries(entries, scheme)
-        if not filtered_entries:
-             print(f"信息: 在词库 '{lexicon_name}' 中根据方案 '{scheme}' 未找到符合条件的条目。")
-             return [], False # 返回空
+        self._add_main_buttons()  # 调用添加按钮的方法
 
-        actual_count = len(filtered_entries)
-        sufficient = actual_count >= count
+    # 动画辅助方法 (不变)
+    def _create_switch_animation(self, instance, switch_method):
+        anim = (
+            Animation(scale=0.95, duration=0.1)
+            + Animation(scale=1, duration=0.1)
+        )
+        anim.bind(on_complete=lambda *_: switch_method())
+        anim.start(instance)
+        # Optional: self.app.start_animation(instance, anim) if using App animation tracking
 
-        # 取样：如果请求数量大于实际数量，则返回所有筛选出的条目
-        sample_count = min(count, actual_count)
-        sampled_entries = random.sample(filtered_entries, sample_count)
+    def show_query_screen(self, instance):
+        self._create_switch_animation(instance, self._switch_to_query)
 
-        # 返回取样结果和是否足够
-        return sampled_entries, sufficient
+    def show_recite_screen(self, instance):
+        self._create_switch_animation(instance, self._switch_to_recite)
 
+    def show_lexicon_screen(self, instance):
+        self._create_switch_animation(instance, self._switch_to_lexicon)
 
-    def update_entry(self, entry, update_type):
-        """
-        Updates an entry's statistics based on the recitation result ('pass', 'view', 'mistake')
-        and saves the change using the shared Lexicon instance.
-        """
-        if not self.lexicon:
-             print("错误: Recite.update_entry 无法访问共享的 Lexicon 实例。")
-             return
-        if not isinstance(entry, dict):
-            print("错误: Recite.update_entry 接收到的 entry 不是字典。")
-            return
+    # --- Switching Methods ---
+    # These now instantiate classes from other modules
 
-        # 更新统计数据
-        # 注意: .get(key, 0) 确保即使键不存在也能安全地 +1
-        if update_type == 'pass':
-            entry['memory'] = entry.get('memory', 0) + 1
-        elif update_type == 'view':
-            # 查看也算一次记忆，可能也算一次查询？根据您的定义调整
-            entry['memory'] = entry.get('memory', 0) + 1
-            entry['inquiry'] = entry.get('inquiry', 0) + 1
-        elif update_type == 'mistake':
-            # 错误时，通常也算记忆了一次，算查询了一次，并且错误次数+1
-            entry['memory'] = entry.get('memory', 0) + 1
-            entry['inquiry'] = entry.get('inquiry', 0) + 1
-            entry['mistake'] = entry.get('mistake', 0) + 1
-        else:
-            print(f"警告: Recite.update_entry 收到未知的 update_type: {update_type}")
-            # 可能不需要更新，直接返回
-            return
+    # 修改切换屏幕的方法以传递实例
+    def _switch_to_query(self):
+        self.clear_widgets()
+        # Pass the callback to return to this screen's logic
+        self.add_widget(QueryScreen(
+            return_to_main=self.show_main_screen,  # 回调函数
+            lexicon_instance=self.lexicon,  # 传递共享实例
+            data_instance=self.data  # 传递共享实例
+        ))
 
-        # --- 使用共享的 lexicon 实例保存更新 ---
-        self.lexicon.update_entry_in_defaults(entry)
+    def _switch_to_recite(self):
+        self.clear_widgets()
+        # ReciteScreen.__init__ now handles starting with direction selection
+        self.add_widget(ReciteScreen(
+            return_to_main=self.show_main_screen,
+            lexicon_instance=self.lexicon,
+            data_instance=self.data
+        ))
+
+    def _switch_to_lexicon(self):
+        self.clear_widgets()
+        self.add_widget(LexiconScreen(
+            return_to_main=self.show_main_screen,
+            lexicon_instance=self.lexicon,
+            data_instance=self.data
+        ))
+
+    # --- Return Logic ---
+    # 返回主屏幕的逻辑 (确保 _add_main_buttons 被调用)
+    def show_main_screen(self, instance=None):
+        if instance:
+             Animation.cancel_all(instance)
+             instance.scale = 1
+        self.clear_widgets()
+        self._add_main_buttons()  # 重新构建按钮
+
+    def _add_main_buttons(self):
+        self.clear_widgets()
+
+        self.query_button = RoundButton(text='查询', font_size=500, color=(1, 1, 1, 1), bg_color=(0.529, 0.808, 0.922, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.query_button.bind(on_press=self.show_query_screen)
+        self.add_widget(self.query_button)
+
+        self.recite_button = RoundButton(text='记忆', font_size=500, color=(1, 1, 1, 1), bg_color=(0.275, 0.510, 0.706, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.recite_button.bind(on_press=self.show_recite_screen)
+        self.add_widget(self.recite_button)
+
+        self.lexicon_button = RoundButton(text='词库', font_size=500, color=(1, 1, 1, 1), bg_color=(0.118, 0.216, 0.600, 1), animation_duration=0.1, enable_ripple=True, ripple_color=(1, 1, 1, 0.3))
+        self.lexicon_button.bind(on_press=self.show_lexicon_screen)
+        self.add_widget(self.lexicon_button)
